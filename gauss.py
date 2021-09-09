@@ -1,49 +1,65 @@
+from functools import reduce
 import numpy as np
+from numpy import abs
+from random import uniform, randint
 
-a = [[1, 2, 3], [5, -3, 4], [12, 3, 3]]
-b = [3, 4, 1]
+EPS = 1e-3
 
 def col_plus_col(A, i, j, coef):
 	A[j] = [A[j][k] + coef * A[i][k] for k in range(len(A[j]))]
 
-def max_abs_iter(a):
-	m = np.fabs(a[0])
-	i = 0
-	for j in range(len(a)):
-		if m <= np.fabs(a[j]):
-			m = np.fabs(a[j])
-			i = j
-	return i
+def swap(A, i1, i2):
+	permut = list(range(len(A)))
+	permut[i1] = i2
+	permut[i2] = i1
+	return A[permut, :]
 
-def gauss_method(a, b, inverse=False):
-	n = len(b)
-	A = a.copy()
-	B = b.copy()
-	if inverse:
-		inv = np.eye(n, n)
-	for i in range(n - 1):
-		maxi = max_abs_iter([A[k][i] for k in range(i, n)])
-		if A[i][maxi] == 0:
+def gauss_method_inverse(A):
+	n = len(A)
+	A = np.concatenate((A, np.eye(n)), axis=1)
+	for i in range(n):
+		maxi = i
+		for tempi in range(i, n):
+			if abs(A[tempi][i]) > abs(A[maxi][i]):
+				maxi = tempi
+		if abs(A[maxi][i]) < EPS:
 			return None
-		if i != maxi: 
-			A[i], A[maxi] = A[maxi], A[i]
-			B[i], B[maxi] = B[maxi], B[i]
-			if inverse:
-				inv[i], inv[maxi] = inv[maxi], inv[i]
-		for j in range(i + 1, n):
-			c = - A[j][i] / A[i][i]
-			col_plus_col(A, i, j, c)
-			if inverse:
-				col_plus_col(inv, i, j, c)
-			B[j] += B[i] * c
-	for j in range(n - 1, 0, -1):
-		for i in range(j - 1, -1, -1):
-			c = - A[i][j] / A[j][j]
-			col_plus_col(A, j, i, c)
-			if inverse:
-				col_plus_col(inv, j, i, c)
-			B[i] += c * B[j]
-	if inverse:
-		return inv
-	else:
-		return A, B
+		A = swap(A,i, maxi)
+		A[i] /= A[i][i]
+		for j in range(n):
+			if j != i:
+				col_plus_col(A, i, j, - A[j][i])
+	return A[:, n::]
+
+def iter(x0, A):
+	x = x0
+	while True:
+		x = np.matmul(x, 2 * np.eye(len(x)) - np.matmul(A, x))
+		yield x
+
+def add_err(A):
+	n = len(A)
+	num = randint(n, n*n)
+	for _ in range(num):
+		A[randint(0, n - 1)][randint(0, n - 1)] += uniform(-10 * EPS, 10 * EPS)
+
+def error(X, A):
+	E = np.matmul(X, A) - np.eye(len(A))
+	return reduce(lambda a, b : a + abs(b), np.reshape(E, len(A) * len(A)))
+
+def main():
+	a = [[1, 2, 6], [-4, 4, 3], [9, -6, 2]]
+	A = gauss_method_inverse(a)
+	print(f"Моя обратная\n{A}\nКомпьютерная\n{np.linalg.inv(a)}")
+	add_err(A)
+	print(f"Испорченная\n{A}")
+	corrector = iter(A, a)
+	n = int(input("Введите кол-во итераций: "))
+	for i in range(1, n):
+		X = next(corrector)
+		print(f"Итерация {i}:\n{X}\n\tПогрешность = {error(X, a):.2}")
+
+	
+
+if __name__ == "__main__":
+	main()
