@@ -45,10 +45,11 @@ def add_err(A):
 
 def error(X, A):
 	E = np.matmul(X, A) - np.eye(len(A))
-	return reduce(lambda a, b : a + abs(b), np.reshape(E, len(A) * len(A)))
+	return reduce(lambda a, b : a + abs(b), np.reshape(E, len(A) * len(A)), 0)
 
 def main():
 	a = [[1, 2, 6], [-4, 4, 3], [9, -6, 2]]
+	print(f"Заданная матрица:\n{np.array(a)}")
 	A = gauss_method_inverse(a)
 	print(f"Моя обратная\n{A}\nКомпьютерная\n{np.linalg.inv(a)}")
 	add_err(A)
